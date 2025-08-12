@@ -1,0 +1,13 @@
+{
+  "name": "leavn-backend",
+  "version": "1.0.0",
+  "description": "Minimal Vercel functions backend for Leavn.",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": ""
+  },
+  "dependencies": {
+    "openai": "^4.28.0"
+  }
+}
