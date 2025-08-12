@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Minimal Vercel functions backend for Leavn.",
   "main": "index.js",
-  "type": "module",
-  "scripts": {
+  
+  "script: {
     "build": ""
   },
   "dependencies": {
