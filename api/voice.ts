@@ -1,4 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
+import { BodyParseError, parseJsonBody } from './_utils';
 
 // POST /api/voice
 // Proxies ElevenLabs Text-to-Speech API. Requires `ELEVENLABS_API_KEY` env var.
@@ -18,7 +19,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return;
     }
 
-    const { text, voiceId, model = 'eleven_turbo_v2', format = 'mp3_44100_128' } = req.body || {};
+    let body: Record<string, unknown>;
+    try {
+      body = await parseJsonBody(req);
+    } catch (error) {
+      if (error instanceof BodyParseError) {
+        res.status(error.statusCode).json({ error: error.message });
+        return;
+      }
+      throw error;
+    }
+
+    const {
+      text,
+      voiceId,
+      model = 'eleven_turbo_v2',
+      format = 'mp3_44100_128',
+    } = body as {
+      text?: string;
+      voiceId?: string;
+      model?: string;
+      format?: string;
+    };
     if (!text || !voiceId) {
       res.status(400).json({ error: 'Missing text or voiceId' });
       return;
