@@ -2,14 +2,29 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import OpenAI from 'openai';
 import { BodyParseError, parseJsonBody } from './_utils';
 
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY as string });
-
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   try {
-    if (req.method !== 'POST') {
-      res.status(405).end();
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+
+    if (req.method === 'OPTIONS') {
+      res.status(200).end();
       return;
     }
+
+    if (req.method !== 'POST') {
+      res.status(405).json({ error: 'Method not allowed' });
+      return;
+    }
+
+    const apiKey = process.env.OPENAI_API_KEY?.trim();
+    if (!apiKey) {
+      res.status(503).json({ error: 'OpenAI API key not configured' });
+      return;
+    }
+
+    const client = new OpenAI({ apiKey });
 
     let body: Record<string, unknown>;
     try {
@@ -23,7 +38,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const {
-      model = 'gpt-5-mini',
+      model = 'gpt-4o-mini',
       messages = [],
       temperature = 0.7,
       max_tokens,
@@ -46,6 +61,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       usage: completion.usage,
     });
   } catch (e: any) {
-    res.status(500).json({ error: e?.message || 'Server error' });
+    const status = e?.status ?? e?.response?.status ?? 500;
+    res.status(status >= 400 && status <= 599 ? status : 500).json({ error: e?.message || 'Server error' });
   }
 }
