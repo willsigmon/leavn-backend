@@ -64,9 +64,25 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     const url = new URL('https://api.esv.org/v3/passage/text/');
     url.searchParams.set('q', reference);
-    if (includeHtml) {
-      url.searchParams.set('include-html-formatting', 'true');
-    }
+    url.searchParams.set('include-verse-numbers', 'true');
+    url.searchParams.set('include-first-verse-numbers', 'true');
+    url.searchParams.set('include-passage-references', 'false');
+    url.searchParams.set('include-footnotes', 'false');
+    url.searchParams.set('include-footnote-body', 'false');
+    url.searchParams.set('include-headings', 'false');
+    url.searchParams.set('include-short-copyright', 'false');
+    url.searchParams.set('include-passage-horizontal-lines', 'false');
+    url.searchParams.set('include-heading-horizontal-lines', 'false');
+    url.searchParams.set('horizontal-line-length', '0');
+    url.searchParams.set('include-selahs', 'true');
+    url.searchParams.set('indent-using', 'space');
+    url.searchParams.set('indent-paragraphs', '0');
+    url.searchParams.set('indent-poetry', 'true');
+    url.searchParams.set('indent-poetry-lines', '0');
+    url.searchParams.set('indent-declares', '0');
+    url.searchParams.set('indent-psalm-doxology', '0');
+    url.searchParams.set('line-length', '0');
+    url.searchParams.set('include-html-formatting', includeHtml ? 'true' : 'false');
 
     const upstream = await fetch(url, {
       headers: {
@@ -87,6 +103,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const data = safeJsonParse(text);
+    if (isPassageResponse(data)) {
+      data.passages = data.passages.map(stripFootnotesFromPassage);
+    }
+
     res.status(200).json(data);
   } catch (error: unknown) {
     console.error('ESV passage handler failed', error);
@@ -104,4 +124,27 @@ function safeJsonParse(text: string): unknown {
   } catch {
     return text;
   }
+}
+
+type PassageResponse = {
+  passages: string[];
+  [key: string]: unknown;
+};
+
+function isPassageResponse(value: unknown): value is PassageResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Array.isArray((value as PassageResponse).passages)
+  );
+}
+
+function stripFootnotesFromPassage(text: string): string {
+  let cleaned = text;
+  cleaned = cleaned.replace(/\n\s*\nFootnotes[\s\S]*$/i, '');
+  cleaned = cleaned.replace(/\(\d+\)/g, '');
+  cleaned = cleaned.replace(/\[\d+\]/g, '');
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  cleaned = cleaned.replace(/\s*(?:\(ESV\))\s*$/, '');
+  return cleaned.trim();
 }

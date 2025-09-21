@@ -89,6 +89,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const data = safeJsonParse(text);
+    if (isSearchResponse(data)) {
+      data.results = data.results.map(result => ({
+        ...result,
+        content: stripFootnotes(result.content),
+      }));
+    }
+
     res.status(200).json(data);
   } catch (error: unknown) {
     console.error('ESV search handler failed', error);
@@ -97,7 +104,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 }
 
-function safeJsonParse(text: string): unknown {
+function safeJsonParse(text: string): any {
   if (!text) {
     return null;
   }
@@ -106,4 +113,33 @@ function safeJsonParse(text: string): unknown {
   } catch {
     return text;
   }
+}
+
+type SearchResult = {
+  content?: string;
+  [key: string]: unknown;
+};
+
+type SearchResponse = {
+  results: SearchResult[];
+  [key: string]: unknown;
+};
+
+function isSearchResponse(value: unknown): value is SearchResponse {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Array.isArray((value as SearchResponse).results)
+  );
+}
+
+function stripFootnotes(text?: string): string | undefined {
+  if (typeof text !== 'string') {
+    return text;
+  }
+  let cleaned = text;
+  cleaned = cleaned.replace(/\(\d+\)/g, '');
+  cleaned = cleaned.replace(/\[\d+\]/g, '');
+  cleaned = cleaned.replace(/\s+/g, ' ');
+  return cleaned.trim();
 }
